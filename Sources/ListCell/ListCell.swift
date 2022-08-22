@@ -838,8 +838,6 @@ public struct ListCell<Icon, Content, Detail>: View where Icon: View, Content: V
 
     private struct Chevron: View {
 
-        // MARK: - View
-
         var body: some View {
             Image(systemName: "chevron.forward")
                 .font(Font.system(.caption).weight(.bold))
@@ -856,10 +854,21 @@ public struct ListCell<Icon, Content, Detail>: View where Icon: View, Content: V
         }
 
     }
+
 }
 
 public extension View {
 
+    /// Sets the style for list cellswithin this view.
+    ///
+    /// Use this modifier to set a specific style for all list cells within a view:
+    ///
+    ///     List {
+    ///         ListCell("Fire", systemImage: "flame.fill")
+    ///         ListCell("Lightning", systemImage: "bolt.fill")
+    ///     }
+    ///     .listCellStyle(MyCustomListCellStyle())
+    ///
     func listCellStyle<T>(_ style: T) -> some View where T: ListCellStyle {
         environment(\.listCellStyle, .init(style))
     }
@@ -867,23 +876,19 @@ public extension View {
 }
 
 public protocol ListCellStyle {
+
     associatedtype Body: View
+
     typealias Configuration = ListCellStyleConfiguration
 
-    @ViewBuilder func makeBody(configuration: Configuration) -> Body
+    @ViewBuilder
+    func makeBody(configuration: Configuration) -> Body
+
 }
 
 public struct ListCellStyleConfiguration {
 
-    fileprivate init(icon: Icon,
-                     content: Content,
-                     detail: Detail,
-                     badge: Badge?) {
-        self.icon = icon
-        self.content = content
-        self.detail = detail
-        self.badge = badge
-    }
+    // MARK: - API
 
     public struct Icon: View {
 
@@ -919,9 +924,22 @@ public struct ListCellStyleConfiguration {
     public let detail: Detail
     public let badge: Badge?
 
+    // MARK: - Private
+
+    fileprivate init(icon: Icon,
+                     content: Content,
+                     detail: Detail,
+                     badge: Badge?) {
+        self.icon = icon
+        self.content = content
+        self.detail = detail
+        self.badge = badge
+    }
 }
 
-public struct DefaultListCellStyle: ListCellStyle {
+public struct TitleAndIconListCellStyle: ListCellStyle {
+
+    // MARK: - ListCellStyle
 
     public func makeBody(configuration: Configuration) -> some View {
         HStack {
@@ -935,19 +953,43 @@ public struct DefaultListCellStyle: ListCellStyle {
 
 }
 
-public extension ListCellStyle where Self == DefaultListCellStyle {
+public extension ListCellStyle where Self == TitleAndIconListCellStyle {
 
-    static var defaultListCellStyle: DefaultListCellStyle { .init() }
+    static var titleAndIconStyle: TitleAndIconListCellStyle { .init() }
+
+}
+
+public struct TitleOnlyListCellStyle: ListCellStyle {
+
+    // MARK: - ListCellStyle
+
+    public func makeBody(configuration: Configuration) -> some View {
+        HStack {
+            configuration.content
+                .foregroundColor(.init(.label))
+                .badge(configuration.badge)
+            Spacer()
+            configuration.detail
+        }
+    }
+
+}
+
+public extension ListCellStyle where Self == TitleOnlyListCellStyle {
+
+    static var titleOnlyStyle: TitleOnlyListCellStyle { .init() }
 
 }
 
 public struct ButtonListCellStyle: ListCellStyle {
 
+    // MARK: - Initializers
+
     public init(accentColor: Color? = nil) {
         self.accentColor = accentColor
     }
 
-    public let accentColor: Color?
+    // MARK: - ListCellStyle
 
     public func makeBody(configuration: Configuration) -> some View {
         configuration.content
@@ -956,17 +998,45 @@ public struct ButtonListCellStyle: ListCellStyle {
             .frame(maxWidth: .infinity)
     }
 
+    // MARK: - Private
+
+    private let accentColor: Color?
+
 }
 
 public extension ListCellStyle where Self == ButtonListCellStyle {
 
-    static var defaultButtonListCellStyle: ButtonListCellStyle { .init(accentColor: .accentColor) }
+    static var defaultButtonStyle: ButtonListCellStyle { .init(accentColor: .accentColor) }
 
-    static var destructiveButtonListCellStyle: ButtonListCellStyle { .init(accentColor: .red) }
+    static var destructiveButtonStyle: ButtonListCellStyle { .init(accentColor: .red) }
 
     static func buttonListCellStyle(accentColor: Color?) -> ButtonListCellStyle {
         .init(accentColor: accentColor)
     }
+
+}
+
+public struct AutomaticListCellStyle: ListCellStyle {
+
+    // MARK: - ListCellStyle
+
+    public func makeBody(configuration: Configuration) -> some View {
+        if horizontalSizeClass == .compact {
+            TitleOnlyListCellStyle().makeBody(configuration: configuration)
+        } else {
+            TitleAndIconListCellStyle().makeBody(configuration: configuration)
+        }
+    }
+
+    // MARK: - Private
+
+    @Environment(\.horizontalSizeClass)
+    private var horizontalSizeClass
+}
+
+public extension ListCellStyle where Self == AutomaticListCellStyle {
+
+    static var automatic: AutomaticListCellStyle { .init() }
 
 }
 
@@ -987,7 +1057,7 @@ private struct AnyListCellStyle: ListCellStyle {
 
 private struct ListCellStyleKey: EnvironmentKey {
     typealias Value = AnyListCellStyle
-    static var defaultValue: AnyListCellStyle { .init(DefaultListCellStyle()) }
+    static var defaultValue: AnyListCellStyle { .init(AutomaticListCellStyle()) }
 }
 
 private extension EnvironmentValues {
@@ -1020,15 +1090,15 @@ struct ListCell_Previews: PreviewProvider {
                     ListCell(placeholder: "Placeholder", input: .constant(""))
                     ListCell("Content", systemImage: "envelope", disclosureIndicator: true)
                 }
-                .listCellStyle(.defaultListCellStyle)
+                .listCellStyle(.automatic)
                 Section {
                     ListCell("Continue")
-                        .listCellStyle(.destructiveButtonListCellStyle)
+                        .listCellStyle(.destructiveButtonStyle)
                 }
 
                 Section {
                     ListCell("Cancel")
-                        .listCellStyle(.defaultButtonListCellStyle)
+                        .listCellStyle(.defaultButtonStyle)
                 }
             }
             .colorScheme(scheme)
