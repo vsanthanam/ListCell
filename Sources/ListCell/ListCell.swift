@@ -751,6 +751,22 @@ public struct ListCell<Icon, Content, Detail>: View where Icon: View, Content: V
                   toggle: isOn)
     }
 
+    public init<Title>(_ title: Title,
+                       systemImage name: String,
+                       toggle isOn: Binding<Bool>) where Title: StringProtocol, Content == Text, Icon == Image, Detail == Toggle<EmptyView> {
+        self.init(content: { Text(title) },
+                  icon: { Image(systemName: name) },
+                  toggle: isOn)
+    }
+
+    public init(_ title: LocalizedStringKey,
+                systemImage name: String,
+                toggle isOn: Binding<Bool>) where Content == Text, Icon == Image, Detail == Toggle<EmptyView> {
+        self.init(content: { Text(title) },
+                  icon: { Image(systemName: name) },
+                  toggle: isOn)
+    }
+
     public init(@ViewBuilder content: @escaping () -> Content,
                 toggle isOn: Binding<Bool>) where Detail == Toggle<EmptyView>, Icon == EmptyView {
         self.init(content: content,
