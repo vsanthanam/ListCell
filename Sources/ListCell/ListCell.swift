@@ -790,15 +790,25 @@ public struct ListCell<Icon, Content, Detail>: View where Icon: View, Content: V
                   privateStyle: .init(TextFieldListCellStyle()))
     }
 
+    public init(configuration: ListCellStyleConfiguration) where Content == ListCellStyleConfiguration.Content, Detail == ListCellStyleConfiguration.Detail, Icon == ListCellStyleConfiguration.Icon {
+        self.init(content: { configuration.content },
+                  icon: { configuration.icon },
+                  detail: { configuration.detail },
+                  badgeText: configuration.badge,
+                  privateStyle: AnyListCellStyle(AutomaticListCellStyle()),
+                  privateConfiguration: configuration)
+    }
+
     // MARK: - View
 
     public var body: some View {
+        let config = privateConfiguration ?? buildConfiguration()
         if let privateStyle = privateStyle {
             privateStyle
-                .makeBody(configuration: buildConfiguration())
+                .makeBody(configuration: config)
         } else {
             listCellStyle
-                .makeBody(configuration: buildConfiguration())
+                .makeBody(configuration: config)
         }
     }
 
@@ -808,14 +818,17 @@ public struct ListCell<Icon, Content, Detail>: View where Icon: View, Content: V
                  @ViewBuilder icon: @escaping () -> Icon,
                  @ViewBuilder detail: @escaping () -> Detail,
                  badgeText: Text? = nil,
-                 privateStyle: AnyListCellStyle? = nil) {
+                 privateStyle: AnyListCellStyle? = nil,
+                 privateConfiguration: ListCellStyleConfiguration? = nil) {
         self.content = content
         self.icon = icon
         self.detail = detail
         self.badgeText = badgeText
         self.privateStyle = privateStyle
+        self.privateConfiguration = privateConfiguration
     }
 
+    private let privateConfiguration: ListCellStyleConfiguration?
     private let privateStyle: AnyListCellStyle?
     private let icon: () -> Icon
     private let content: () -> Content
@@ -1077,10 +1090,23 @@ private extension Toggle {
     }
 }
 
+struct BorderedStyle: ListCellStyle {
+
+    func makeBody(configuration: Configuration) -> some View {
+        ListCell(configuration: configuration)
+            .background(Color.red)
+    }
+
+}
+
 struct ListCell_Previews: PreviewProvider {
     static var previews: some View {
         ForEach(ColorScheme.allCases, id: \.self) { scheme in
             List {
+                Section {
+                    ListCell("Test")
+                    ListCell("Test")
+                }
                 Section {
                     ListCell("Hello")
                     Button(action: { print("X") }) {
